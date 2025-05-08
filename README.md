@@ -1,8 +1,8 @@
-# 💰 Personal Finance Web Application
+# Personal Finance Web Application
 
 A PHP-based web application designed to help users manage their personal finances effectively. Features include account tracking, transaction management, budgeting, and goal setting.
 
-## 🚀 Features
+## Features
 
 - **User Authentication**: Secure registration and login system.
 - **Account Management**: Add and monitor multiple accounts (bank, cash). (wip)
@@ -10,13 +10,13 @@ A PHP-based web application designed to help users manage their personal finance
 - **Budgeting**: Set spending limits for different categories and track progress. (wip)
 - **Financial Goals**: Define savings goals with target amounts and deadlines. (wip)
 
-## 🛠️ Technologies Used
+## 🛠Technologies Used
 
 - **Backend**: PHP
 - **Database**: MySQL
 - **Frontend**: HTML, CSS, JavaScript
 
-## 📦 Setup Instructions
+## Setup Instructions
 
 1. **Clone the Repository**:
    ```bash
@@ -36,11 +36,11 @@ A PHP-based web application designed to help users manage their personal finance
    - Navigate to `http://localhost/EveryPound/` in your web browser.
    - Or run it through your code edditor
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
 
 
-## 📧 Contact
+## Contact
 
 For questions or feedback, please contact [DakaraiG](dakgrant2016@gmail.com).
