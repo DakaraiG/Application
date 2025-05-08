@@ -1,6 +1,6 @@
-# Personal Finance Web Application
+# Personal Finance Web Application (wip)
 
-A PHP-based web application designed to help users manage their personal finances effectively. Features include account tracking, transaction management, budgeting, and goal setting.
+A PHP-based web application designed to help users manage their finances effectively. Features include account tracking, transaction management, budgeting, and goal setting.
 
 ## Features
 
@@ -10,7 +10,7 @@ A PHP-based web application designed to help users manage their personal finance
 - **Budgeting**: Set spending limits for different categories and track progress. (wip)
 - **Financial Goals**: Define savings goals with target amounts and deadlines. (wip)
 
-## 🛠Technologies Used
+## Technologies Used
 
 - **Backend**: PHP
 - **Database**: MySQL
@@ -34,7 +34,7 @@ A PHP-based web application designed to help users manage their personal finance
 4. **Run the Application**:
    - Deploy the application on a local server (e.g., XAMPP) or a web server supporting PHP and MySQL.
    - Navigate to `http://localhost/EveryPound/` in your web browser.
-   - Or run it through your code edditor
+   - Or run it through your code editor
 
 ## License
 
