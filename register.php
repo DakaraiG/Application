@@ -180,7 +180,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         <!--Links to the login page if an existing user-->
         <div class="login-link">
-            Already have an account? Click here to <a href="login.php">Log in</a>
+            Already have an account?<a href="login.php"> Click here to Log in</a>
         </div>
     </div>
 </body>
