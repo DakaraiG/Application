@@ -27,7 +27,7 @@ $stmt = $conn->prepare("SELECT user_id, password FROM Users WHERE email = ?");
             $_SESSION['user_id'] = $user['user_id'];
             
             // Redirect to index page after valid login
-            header("Location: index.php");
+            header("Location: dashboard.php");
             exit();
         } else {
             // Password is invaild
