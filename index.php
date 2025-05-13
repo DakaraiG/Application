@@ -62,13 +62,13 @@
             border-radius: 6px;
             font-size: 16px;
             font-weight: 500;
-            transition: background-color 0.3s ease, transform 0.2s ease;
+            transition: background-color 0.3s ease;
             display: inline-block;
         }
 
         .links a:hover {
             background-color: #0056b3;
-            transform: translateY(-2px);
+
         }
     </style>
 </head>
