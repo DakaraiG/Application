@@ -169,3 +169,187 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* Additional Styles */
+.metric-box {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.metric-box h3 {
+    margin-bottom: 1rem;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.transaction-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.income { color: #28a745; }
+.expense { color: #dc3545; }
+
+.goal-progress {
+    margin: 1rem 0;
+}
+
+.progress-bar {
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #28a745;
+    transition: width 0.3s ease;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.budget-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.empty-state {
+    color: #6c757d;
+    font-style: italic;
+    padding: 1rem 0;
+    text-align: center;
+}
+
+.content-gray-bar h3 {
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+.transaction-item:last-child,
+.budget-item:last-child {
+    border-bottom: none;
+}
+
+/* Profile Page Styles */
+.profile-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.profile-section h3 {
+    margin-bottom: 1.5rem;
+    color: #333;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0.5rem;
+}
+
+.user-info p {
+    margin: 0.8rem 0;
+    font-size: 1rem;
+}
+
+.account-form {
+    display: grid;
+    gap: 1.2rem;
+    max-width: 500px;
+}
+
+.form-group {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: #333;
+}
+
+.form-group input,
+.form-group select {
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+}
+
+.submit-btn {
+    background: #28a745;
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.submit-btn:hover {
+    background: #218838;
+}
+
+.accounts-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.account-item {
+    padding: 1rem;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.account-header {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.account-type {
+    background: #e9ecef;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.account-balance {
+    font-weight: 500;
+    color: #28a745;
+}
+
+.success-message {
+    background: #d4edda;
+    color: #155724;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
