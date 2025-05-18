@@ -1,51 +1,71 @@
 <?php
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit;
-}
-
 require_once 'config.php';
+checkAuth();
 
-// Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['add_goal'])) {
-        $goal_name = $conn->real_escape_string($_POST['goal_name']);
-        $target_amount = (float)$_POST['target_amount'];
-        $deadline = $conn->real_escape_string($_POST['deadline']);
+// Handle goal creation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_goal'])) {
+    $goal_name = $conn->real_escape_string($_POST['goal_name']);
+    $target_amount = (float)$_POST['target_amount'];
+    $deadline = $conn->real_escape_string($_POST['deadline']);
 
-        $stmt = $conn->prepare("INSERT INTO Goals (user_id, goal_name, target_amount, deadline) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("issd", $_SESSION['user_id'], $goal_name, $target_amount, $deadline);
-        
-        if ($stmt->execute()) {
-            $_SESSION['message'] = "Goal added successfully!";
-        } else {
-            $_SESSION['error'] = "Error adding goal: " . $conn->error;
-        }
-        $stmt->close();
+    $stmt = $conn->prepare("INSERT INTO Goals (user_id, goal_name, target_amount, deadline) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("issd", $_SESSION['user_id'], $goal_name, $target_amount, $deadline);
+    
+    if ($stmt->execute()) {
+        $_SESSION['message'] = "Goal created successfully!";
+    } else {
+        $_SESSION['error'] = "Error creating goal: " . $conn->error;
     }
+    $stmt->close();
+}
 
-    if (isset($_POST['update_savings'])) {
-        $goal_id = (int)$_POST['goal_id'];
-        $amount = (float)$_POST['amount'];
+// Handle savings update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_savings'])) {
+    $goal_id = (int)$_POST['goal_id'];
+    $amount = (float)$_POST['amount'];
+    $account_id = (int)$_POST['account_id'];
 
-        $stmt = $conn->prepare("UPDATE Goals SET saved_amount = saved_amount + ? WHERE goal_id = ? AND user_id = ?");
-        $stmt->bind_param("dii", $amount, $goal_id, $_SESSION['user_id']);
+    $conn->begin_transaction();
+    try {
+        // Check account balance
+        $balance_result = $conn->query("SELECT balance FROM Accounts 
+                                      WHERE account_id = $account_id 
+                                      AND user_id = {$_SESSION['user_id']}");
+        $balance = $balance_result->fetch_assoc()['balance'];
         
-        if ($stmt->execute()) {
-            $_SESSION['message'] = "Savings updated successfully!";
-        } else {
-            $_SESSION['error'] = "Error updating savings: " . $conn->error;
+        if ($balance < $amount) {
+            throw new Exception("Insufficient funds in selected account");
         }
-        $stmt->close();
+
+        // Update account balance
+        $conn->query("UPDATE Accounts SET balance = balance - $amount 
+                     WHERE account_id = $account_id");
+
+        // Update goal savings
+        $conn->query("UPDATE Goals SET saved_amount = saved_amount + $amount 
+                     WHERE goal_id = $goal_id");
+
+        // Record transaction
+        $conn->query("INSERT INTO Transactions (account_id, amount, category, type, date)
+                     VALUES ($account_id, $amount, 'Savings Transfer', 'expense', NOW())");
+
+        $conn->commit();
+        $_SESSION['message'] = "£" . number_format($amount, 2) . " added to savings!";
+    } catch (Exception $e) {
+        $conn->rollback();
+        $_SESSION['error'] = $e->getMessage();
     }
 }
 
-// Get user's goals
-$goals_query = $conn->prepare("SELECT * FROM Goals WHERE user_id = ? ORDER BY deadline ASC");
-$goals_query->bind_param("i", $_SESSION['user_id']);
-$goals_query->execute();
-$goals_result = $goals_query->get_result();
+// Get user goals
+$goals = $conn->prepare("SELECT * FROM Goals WHERE user_id = ? ORDER BY deadline ASC");
+$goals->bind_param("i", $_SESSION['user_id']);
+$goals->execute();
+$goal_result = $goals->get_result();
+
+// Get user accounts
+$accounts = $conn->query("SELECT account_id, account_name, balance 
+                        FROM Accounts WHERE user_id = {$_SESSION['user_id']}");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -58,7 +78,6 @@ $goals_result = $goals_query->get_result();
 </head>
 <body>
     <div class="dashboard-grid">
-        <!-- Sidebar -->
         <nav class="sidebar">
             <div class="sidebar-inner">
                 <a href="dashboard.php">Home</a>
@@ -69,7 +88,6 @@ $goals_result = $goals_query->get_result();
             </div>
         </nav>
 
-        <!-- Main Content -->
         <main class="content-area">
             <div class="dashboard-header">
                 <span class="dashboard-title">Savings Goals</span>
@@ -87,7 +105,6 @@ $goals_result = $goals_query->get_result();
                     <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>
 
-                <!-- Add Goal Form -->
                 <div class="goal-form-section">
                     <h3>Create New Goal</h3>
                     <form method="POST">
@@ -111,50 +128,65 @@ $goals_result = $goals_query->get_result();
                     </form>
                 </div>
 
-                <!-- Goals List -->
                 <div class="goals-list">
-                    <h3>Your Savings Goals</h3>
-                    <?php if($goals_result->num_rows > 0): ?>
-                        <?php while($goal = $goals_result->fetch_assoc()): 
+                    <h3>Your Goals</h3>
+                    <?php if($goal_result->num_rows > 0): ?>
+                        <?php while($goal = $goal_result->fetch_assoc()): 
                             $progress = ($goal['saved_amount'] / $goal['target_amount']) * 100;
-                            $days_remaining = ceil((strtotime($goal['deadline']) - time()) / (60 * 60 * 24));
+                            $days_left = ceil((strtotime($goal['deadline']) - time()) / 86400);
                         ?>
                             <div class="goal-item">
                                 <div class="goal-header">
                                     <h4><?= htmlspecialchars($goal['goal_name']) ?></h4>
-                                    <span class="deadline">
-                                        <?= date('M d, Y', strtotime($goal['deadline'])) ?>
-                                        (<?= $days_remaining > 0 ? $days_remaining . ' days left' : 'Expired' ?>)
-                                    </span>
-                                </div>
-                                
-                                <div class="progress-container">
-                                    <div class="progress-label">
-                                        <span>Saved: £<?= number_format($goal['saved_amount'], 2) ?></span>
-                                        <span>Target: £<?= number_format($goal['target_amount'], 2) ?></span>
+                                    <div class="goal-meta">
+                                        <span class="target">Target: £<?= number_format($goal['target_amount'], 2) ?></span>
+                                        <span class="deadline <?= $days_left < 0 ? 'expired' : '' ?>">
+                                            <?= $days_left > 0 ? 
+                                                $days_left . " days left" : 
+                                                "Expired " . date('M d, Y', strtotime($goal['deadline'])) 
+                                            ?>
+                                        </span>
                                     </div>
+                                </div>
+
+                                <div class="progress-container">
                                     <div class="progress-bar">
                                         <div class="progress-fill" style="width: <?= min($progress, 100) ?>%"></div>
+                                    </div>
+                                    <div class="progress-label">
+                                        <span>Saved: £<?= number_format($goal['saved_amount'], 2) ?></span>
+                                        <span><?= number_format($progress, 1) ?>%</span>
                                     </div>
                                 </div>
 
                                 <form method="POST" class="update-savings-form">
                                     <input type="hidden" name="goal_id" value="<?= $goal['goal_id'] ?>">
                                     <div class="form-group">
-                                        <label>Add to Savings (£)</label>
+                                        <label>Transfer From:</label>
+                                        <select name="account_id" required>
+                                            <?php while($account = $accounts->fetch_assoc()): ?>
+                                                <option value="<?= $account['account_id'] ?>">
+                                                    <?= htmlspecialchars($account['account_name']) ?> 
+                                                    (£<?= number_format($account['balance'], 2) ?>)
+                                                </option>
+                                            <?php endwhile; ?>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Amount (£)</label>
                                         <input type="number" step="0.01" name="amount" required>
                                     </div>
-                                    <button type="submit" name="update_savings" class="submit-btn-small">Update</button>
+                                    <button type="submit" name="update_savings" class="submit-btn-small">Add Funds</button>
                                 </form>
                             </div>
                         <?php endwhile; ?>
                     <?php else: ?>
-                        <div class="empty-state">No savings goals found</div>
+                        <div class="empty-state">No savings goals created yet</div>
                     <?php endif; ?>
                 </div>
             </div>
         </main>
     </div>
+    <?php $conn->close(); ?>
 </body>
 </html>
-<?php $conn->close(); ?>

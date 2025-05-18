@@ -529,3 +529,81 @@ textarea {
     border-radius: 4px;
     transition: width 0.3s ease;
 }
+
+.balance-trend {
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+.balance-trend span {
+    display: block;
+    padding: 0.2rem 0;
+}
+
+.transfer-form {
+    border-top: 1px solid #eee;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+/* Add to main.css */
+.account-summary {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.summary-item {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 6px;
+}
+
+.summary-item.income {
+    background: #d4edda;
+    color: #155724;
+}
+
+.summary-item.expense {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.goal-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.9rem;
+}
+
+.deadline.expired {
+    color: #dc3545;
+}
+
+.account-type {
+    background: #e9ecef;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.8rem;
+}
+
+.chart-box {
+    position: relative;
+    height: 400px;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+canvas {
+    max-height: 350px;
+    width: 100% !important;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+    font-style: italic;
+}

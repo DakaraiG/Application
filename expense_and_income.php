@@ -1,13 +1,8 @@
 <?php
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit;
-}
-
 require_once 'config.php';
+checkAuth();
 
-// Handle form submission
+// Handle transaction submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amount = (float)$_POST['amount'];
     $category = $conn->real_escape_string($_POST['category']);
@@ -16,22 +11,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $account_id = (int)$_POST['account_id'];
     $note = $conn->real_escape_string($_POST['note']);
 
-    $stmt = $conn->prepare("INSERT INTO Transactions (account_id, amount, category, type, date, note) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("idssss", $account_id, $amount, $category, $type, $date, $note);
-    
-    if ($stmt->execute()) {
+    $conn->begin_transaction();
+    try {
+        // Insert transaction
+        $stmt = $conn->prepare("INSERT INTO Transactions 
+                            (account_id, amount, category, type, date, note)
+                            VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("idssss", $account_id, $amount, $category, $type, $date, $note);
+        $stmt->execute();
+        
+        // Update account balance
+        $balance_update = $type === 'income' ? "balance + $amount" : "balance - $amount";
+        $conn->query("UPDATE Accounts SET balance = $balance_update WHERE account_id = $account_id");
+        
+        $conn->commit();
         $_SESSION['message'] = "Transaction added successfully!";
-    } else {
-        $_SESSION['error'] = "Error adding transaction: " . $conn->error;
+    } catch (Exception $e) {
+        $conn->rollback();
+        $_SESSION['error'] = "Error: " . $e->getMessage();
     }
     $stmt->close();
 }
 
-// Get user's accounts
-$accounts_query = $conn->prepare("SELECT account_id, account_name FROM Accounts WHERE user_id = ?");
-$accounts_query->bind_param("i", $_SESSION['user_id']);
-$accounts_query->execute();
-$accounts_result = $accounts_query->get_result();
+// Get user accounts
+$accounts = $conn->prepare("SELECT account_id, account_name, balance 
+                          FROM Accounts WHERE user_id = ?");
+$accounts->bind_param("i", $_SESSION['user_id']);
+$accounts->execute();
+$account_result = $accounts->get_result();
+
+// Get recent transactions
+$transactions = $conn->prepare("SELECT t.*, a.account_name 
+                              FROM Transactions t
+                              JOIN Accounts a ON t.account_id = a.account_id
+                              WHERE a.user_id = ?
+                              ORDER BY t.date DESC LIMIT 10");
+$transactions->bind_param("i", $_SESSION['user_id']);
+$transactions->execute();
+$transactions_result = $transactions->get_result();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -45,7 +62,6 @@ $accounts_result = $accounts_query->get_result();
 </head>
 <body>
     <div class="dashboard-grid">
-        <!-- Sidebar -->
         <nav class="sidebar">
             <div class="sidebar-inner">
                 <a href="dashboard.php">Home</a>
@@ -56,7 +72,6 @@ $accounts_result = $accounts_query->get_result();
             </div>
         </nav>
 
-        <!-- Main Content -->
         <main class="content-area">
             <div class="dashboard-header">
                 <span class="dashboard-title">Expenses & Income</span>
@@ -74,7 +89,6 @@ $accounts_result = $accounts_query->get_result();
                     <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>
 
-                <!-- Transaction Form -->
                 <div class="transaction-form-section">
                     <h3>Add New Transaction</h3>
                     <form method="POST">
@@ -105,10 +119,11 @@ $accounts_result = $accounts_query->get_result();
                             <div class="form-group">
                                 <label>Account</label>
                                 <select name="account_id" required>
-                                    <?php if($accounts_result->num_rows > 0): ?>
-                                        <?php while($account = $accounts_result->fetch_assoc()): ?>
+                                    <?php if($account_result->num_rows > 0): ?>
+                                        <?php while($account = $account_result->fetch_assoc()): ?>
                                             <option value="<?= $account['account_id'] ?>">
-                                                <?= htmlspecialchars($account['account_name']) ?>
+                                                <?= htmlspecialchars($account['account_name']) ?> 
+                                                (£<?= number_format($account['balance'], 2) ?>)
                                             </option>
                                         <?php endwhile; ?>
                                     <?php else: ?>
@@ -126,7 +141,6 @@ $accounts_result = $accounts_query->get_result();
                     </form>
                 </div>
 
-                <!-- Charts Section -->
                 <div class="charts-container">
                     <div class="chart-box">
                         <canvas id="incomeChart"></canvas>
@@ -136,25 +150,11 @@ $accounts_result = $accounts_query->get_result();
                     </div>
                 </div>
 
-                <!-- Recent Transactions -->
                 <div class="recent-transactions">
                     <h3>Recent Transactions</h3>
                     <div class="transactions-list">
-                        <?php
-                        $transactions_query = $conn->prepare("
-                            SELECT t.*, a.account_name 
-                            FROM Transactions t
-                            JOIN Accounts a ON t.account_id = a.account_id
-                            WHERE a.user_id = ?
-                            ORDER BY t.date DESC LIMIT 10
-                        ");
-                        $transactions_query->bind_param("i", $_SESSION['user_id']);
-                        $transactions_query->execute();
-                        $transactions = $transactions_query->get_result();
-                        
-                        if ($transactions->num_rows > 0):
-                            while($transaction = $transactions->fetch_assoc()):
-                        ?>
+                        <?php if($transactions_result->num_rows > 0): ?>
+                            <?php while($transaction = $transactions_result->fetch_assoc()): ?>
                             <div class="transaction-item <?= $transaction['type'] ?>">
                                 <div class="transaction-header">
                                     <span><?= date('M d, Y', strtotime($transaction['date'])) ?></span>
@@ -168,7 +168,8 @@ $accounts_result = $accounts_query->get_result();
                                     <div class="transaction-note"><?= htmlspecialchars($transaction['note']) ?></div>
                                 <?php endif; ?>
                             </div>
-                        <?php endwhile; else: ?>
+                            <?php endwhile; ?>
+                        <?php else: ?>
                             <div class="empty-state">No transactions found</div>
                         <?php endif; ?>
                     </div>
@@ -176,58 +177,83 @@ $accounts_result = $accounts_query->get_result();
             </div>
         </main>
     </div>
-
     <script>
-    // Enhanced Chart Script
-    document.addEventListener('DOMContentLoaded', function() {
-        const chartConfig = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom' },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return ` £${context.parsed.toFixed(2)} (${Math.round(context.percent)}%)`;
-                        }
+    // JavaScript from previous answer remains the same
+    </script>
+    <?php $conn->close(); ?>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chartConfig = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 20,
+                    font: {
+                        size: 14
+                    }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        return `${label}: £${value.toFixed(2)} (${context.percent.toFixed(1)}%)`;
                     }
                 }
             }
-        };
-
-        function loadChart(canvasId, type) {
-            fetch(`data.php?chart=category&type=${type}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.length) {
-                        document.getElementById(canvasId).parentElement.innerHTML = 
-                            `<div class="empty-state">No ${type} data available</div>`;
-                        return;
-                    }
-
-                    new Chart(document.getElementById(canvasId), {
-                        type: 'doughnut',
-                        data: {
-                            labels: data.map(item => item.label),
-                            datasets: [{
-                                data: data.map(item => item.value),
-                                backgroundColor: [
-                                    '#FF6384', '#36A2EB', '#FFCE56', 
-                                    '#4BC0C0', '#9966FF', '#FF9F40'
-                                ],
-                                borderWidth: 2
-                            }]
-                        },
-                        options: chartConfig
-                    });
-                })
-                .catch(error => console.error('Error loading chart:', error));
         }
+    };
 
-        loadChart('incomeChart', 'income');
-        loadChart('expenseChart', 'expense');
-    });
-    </script>
+    function createChart(canvasId, type) {
+        fetch(`data.php?chart=category&type=${type}`)
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                
+                if (data.error) {
+                    document.getElementById(canvasId).parentElement.innerHTML = 
+                        `<div class="empty-state">${data.error}</div>`;
+                    return;
+                }
+                
+                if (data.length === 0) {
+                    document.getElementById(canvasId).parentElement.innerHTML = 
+                        `<div class="empty-state">No ${type} data available</div>`;
+                    return;
+                }
+
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.map(item => item.label),
+                        datasets: [{
+                            data: data.map(item => item.value),
+                            backgroundColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', 
+                                '#4BC0C0', '#9966FF', '#FF9F40',
+                                '#FF97A7', '#7CDDDD', '#FFA600'
+                            ],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: chartConfig
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById(canvasId).parentElement.innerHTML = 
+                    `<div class="error-message">Failed to load chart data</div>`;
+            });
+    }
+
+    createChart('incomeChart', 'income');
+    createChart('expenseChart', 'expense');
+});
+</script>
+    
 </body>
 </html>
-<?php $conn->close(); ?>

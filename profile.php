@@ -1,43 +1,42 @@
 <?php
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit;
-}
-
 require_once 'config.php';
+checkAuth();
 
-// Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['add_account'])) {
-        $account_name = $conn->real_escape_string($_POST['account_name']);
-        $type = $conn->real_escape_string($_POST['type']);
-        $balance = (float)$_POST['balance'];
-        
-        $stmt = $conn->prepare("INSERT INTO Accounts (user_id, account_name, balance, type) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("isds", $_SESSION['user_id'], $account_name, $balance, $type);
-        
-        if ($stmt->execute()) {
-            $_SESSION['message'] = "Account added successfully!";
-        } else {
-            $_SESSION['error'] = "Error adding account: " . $conn->error;
-        }
-        $stmt->close();
+// Handle account creation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_account'])) {
+    $account_name = $conn->real_escape_string($_POST['account_name']);
+    $type = $conn->real_escape_string($_POST['type']);
+    $balance = (float)$_POST['balance'];
+
+    $stmt = $conn->prepare("INSERT INTO Accounts (user_id, account_name, type, balance) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("issd", $_SESSION['user_id'], $account_name, $type, $balance);
+    
+    if ($stmt->execute()) {
+        $_SESSION['message'] = "Account created successfully!";
+    } else {
+        $_SESSION['error'] = "Error creating account: " . $conn->error;
     }
+    $stmt->close();
 }
 
 // Get user data
-$user_query = $conn->prepare("SELECT firstname, surname, email FROM Users WHERE user_id = ?");
-$user_query->bind_param("i", $_SESSION['user_id']);
-$user_query->execute();
-$user_result = $user_query->get_result();
+$user_stmt = $conn->prepare("SELECT firstname, surname, email FROM Users WHERE user_id = ?");
+$user_stmt->bind_param("i", $_SESSION['user_id']);
+$user_stmt->execute();
+$user_result = $user_stmt->get_result();
 $user_data = $user_result->fetch_assoc();
 
-// Get accounts
-$accounts_query = $conn->prepare("SELECT account_name, balance, type FROM Accounts WHERE user_id = ?");
-$accounts_query->bind_param("i", $_SESSION['user_id']);
-$accounts_query->execute();
-$accounts_result = $accounts_query->get_result();
+// Get accounts with transaction summary
+$accounts = $conn->prepare("SELECT a.*, 
+                          SUM(CASE WHEN t.type = 'income' THEN t.amount ELSE 0 END) AS total_income,
+                          SUM(CASE WHEN t.type = 'expense' THEN t.amount ELSE 0 END) AS total_expenses
+                          FROM Accounts a
+                          LEFT JOIN Transactions t ON a.account_id = t.account_id
+                          WHERE a.user_id = ?
+                          GROUP BY a.account_id");
+$accounts->bind_param("i", $_SESSION['user_id']);
+$accounts->execute();
+$account_result = $accounts->get_result();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -50,7 +49,6 @@ $accounts_result = $accounts_query->get_result();
 </head>
 <body>
     <div class="dashboard-grid">
-        <!-- Sidebar -->
         <nav class="sidebar">
             <div class="sidebar-inner">
                 <a href="dashboard.php">Home</a>
@@ -61,24 +59,21 @@ $accounts_result = $accounts_query->get_result();
             </div>
         </nav>
 
-        <!-- Main Content -->
         <main class="content-area">
             <div class="dashboard-header">
-                <span class="dashboard-title">User Profile</span>
+                <span class="dashboard-title">Profile</span>
                 <a href="logout.php" class="logout-btn">Logout</a>
             </div>
             
             <div class="content-white">
-                <!-- User Information -->
                 <div class="profile-section">
                     <h3>Personal Information</h3>
                     <div class="user-info">
-                        <p><strong>Name:</strong> <?php echo htmlspecialchars($user_data['firstname'] . ' ' . htmlspecialchars($user_data['surname'])); ?></p>
+                        <p><strong>Name:</strong> <?= htmlspecialchars($user_data['firstname'] . ' ' . $user_data['surname']) ?></p>
                         <p><strong>Email:</strong> <?= htmlspecialchars($user_data['email']) ?></p>
                     </div>
                 </div>
 
-                <!-- Add Account Form -->
                 <div class="profile-section">
                     <h3>Add New Account</h3>
                     <?php if(isset($_SESSION['message'])): ?>
@@ -91,42 +86,52 @@ $accounts_result = $accounts_query->get_result();
                         <?php unset($_SESSION['error']); ?>
                     <?php endif; ?>
 
-                    <form method="POST" class="account-form">
-                        <div class="form-group">
-                            <label>Account Name:</label>
-                            <input type="text" name="account_name" required>
+                    <form method="POST">
+                        <div class="form-columns">
+                            <div class="form-group">
+                                <label>Account Name</label>
+                                <input type="text" name="account_name" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Account Type</label>
+                                <select name="type" required>
+                                    <option value="bank">Bank Account</option>
+                                    <option value="cash">Cash</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Initial Balance (£)</label>
+                                <input type="number" step="0.01" name="balance" value="0.00" required>
+                            </div>
                         </div>
-                        
-                        <div class="form-group">
-                            <label>Account Type:</label>
-                            <select name="type" required>
-                                <option value="bank">Bank Account</option>
-                                <option value="cash">Cash</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Initial Balance:</label>
-                            <input type="number" step="0.01" name="balance" required>
-                        </div>
-                        
-                        <button type="submit" name="add_account" class="submit-btn">Add Account</button>
+                        <button type="submit" name="add_account" class="submit-btn">Create Account</button>
                     </form>
                 </div>
 
-                <!-- Existing Accounts -->
                 <div class="profile-section">
                     <h3>Your Accounts</h3>
                     <div class="accounts-list">
-                        <?php if($accounts_result->num_rows > 0): ?>
-                            <?php while($account = $accounts_result->fetch_assoc()): ?>
+                        <?php if($account_result->num_rows > 0): ?>
+                            <?php while($account = $account_result->fetch_assoc()): ?>
                                 <div class="account-item">
                                     <div class="account-header">
-                                        <span><?= htmlspecialchars($account['account_name']) ?></span>
+                                        <h4><?= htmlspecialchars($account['account_name']) ?></h4>
                                         <span class="account-type"><?= ucfirst($account['type']) ?></span>
                                     </div>
                                     <div class="account-balance">
                                         £<?= number_format($account['balance'], 2) ?>
+                                    </div>
+                                    <div class="account-summary">
+                                        <div class="summary-item income">
+                                            <span>Income</span>
+                                            <span>+£<?= number_format($account['total_income'], 2) ?></span>
+                                        </div>
+                                        <div class="summary-item expense">
+                                            <span>Expenses</span>
+                                            <span>-£<?= number_format($account['total_expenses'], 2) ?></span>
+                                        </div>
                                     </div>
                                 </div>
                             <?php endwhile; ?>
@@ -138,6 +143,6 @@ $accounts_result = $accounts_query->get_result();
             </div>
         </main>
     </div>
+    <?php $conn->close(); ?>
 </body>
 </html>
-<?php $conn->close(); ?>
