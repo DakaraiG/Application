@@ -79,6 +79,22 @@ body {
     width: 100%;
 }
 
+.content-gray-bar-income-and-expenses {
+    background: #d9d9d9;
+    border-radius: 8px;
+    height: 300px;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 30px;
+}
+
+.chart-box {
+    width: 45%;
+}
+
 /* Sidebar Navigation */
 .sidebar-inner {
     display: flex;
