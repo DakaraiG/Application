@@ -5,10 +5,10 @@ A PHP-based web application designed to help users manage their finances effecti
 ## Features
 
 - **User Authentication**: Secure registration and login system.
-- **Account Management**: Add and monitor multiple accounts (bank, cash). (wip)
-- **Transaction Tracking**: Record income and expenses with categories and notes. (wip)
-- **Budgeting**: Set spending limits for different categories and track progress. (wip)
-- **Financial Goals**: Define savings goals with target amounts and deadlines. (wip)
+- **Account Management**: Add and monitor multiple accounts (bank, cash).
+- **Transaction Tracking**: Record income and expenses with categories and notes.
+- **Budgeting**: Set spending limits for different categories and track progress.
+- **Financial Goals**: Define savings goals with target amounts and deadlines.
 
 ## Technologies Used
 
