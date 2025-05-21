@@ -178,7 +178,7 @@ $transactions_result = $transactions->get_result();
         </main>
     </div>
     <script>
-    // JavaScript from previous answer remains the same
+    // JavaScript
     </script>
     <?php $conn->close(); ?>
     <script>
