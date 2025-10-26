@@ -1,4 +1,4 @@
-# Personal Finance Web Application (wip)
+# Personal Finance Web Application
 
 A PHP-based web application designed to help users manage their finances effectively. Features include account tracking, transaction management, budgeting, and goal setting.
 
@@ -28,7 +28,7 @@ A PHP-based web application designed to help users manage their finances effecti
    - https://sourceforge.net/projects/xampp/
 
 2. **Import the Database**:
-   - Use phpMyAdmin or MySQL import the `PersonalFinanceDB.sql` file located in the `Database/` directory.
+   - Use phpMyAdmin or MySQL to import the `PersonalFinanceDB.sql` file located in the `Database/` directory.
 
 
 4. **Run the Application**:
